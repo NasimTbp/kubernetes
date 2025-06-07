@@ -15,8 +15,9 @@ Once the required tools are installed on the new node, you can join it to the Ku
 
 Run the following command **on the control plane (master) node** to generate a secure join command for worker nodes:
 
-```bash
+```
 sudo kubeadm token create --print-join-command
+```
 
 ##  Example output
 
@@ -27,10 +28,10 @@ kubeadm join 172.11.11.2:6443 --token zvga31.e67apmsqzro3vgad --discovery-token-
 ## 🖥️ Step 2: Join the Worker Node to the Cluster
 Run the generated kubeadm join command on the new worker node:
 
-```bash
+```
 sudo kubeadm join 172.11.11.2:6443 --token zvga31.e67apmsqzro3vgad \
 --discovery-token-ca-cert-hash sha256:3c82536953bfc455c713133685196b82d17428ee2005b665909d5dbb29ac6619
-```bash
+```
 
 After running this command, the worker node should attempt to register with the cluster
 
@@ -38,9 +39,9 @@ After running this command, the worker node should attempt to register with the 
 ## 🏷️ Step 3: Label the Node  
 📍 _Run this on the **control plane node**_
 
-```bash
+```
 kubectl label nodes hq-k8s-wtest1 node-role.kubernetes.io/worker=true
-```bash
+```
 
 Replace hq-k8s-wtest1 with the actual node name (use kubectl get nodes to find it).
 
