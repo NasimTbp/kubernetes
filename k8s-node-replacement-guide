@@ -1,1 +1,37 @@
-aa
+# Node Initialization Checklist in Kubernetes
+
+When a new node is being added to the Kubernetes cluster, the following system pods must be running properly on the node to ensure that it successfully joins the cluster and becomes schedulable.
+
+## ✅ Required Pods (in order of importance)
+
+1. **kube-proxy**  
+   - Namespace: `kube-system`  
+   - Handles network routing rules on each node.
+
+2. **coredns**  
+   - Namespace: `kube-system`  
+   - Provides DNS resolution for services and pods.
+
+3. **calico-api-server**  
+   - Namespace: `calico-apiserver`  
+   - Exposes Calico configuration and status via Kubernetes API.
+
+4. **calico-node**  
+   - Namespace: `calico-system`  
+   - Handles network policy enforcement and IP address management.
+
+5. **calico-node-driver**  
+   - Namespace: `calico-system`  
+   - Custom driver for advanced networking (if enabled in the cluster).
+
+---
+
+## 🔧 Troubleshooting Strategy
+
+If any errors occur during node initialization, the above pods should be verified and troubleshooted **in the specified order**.
+
+For each pod:
+
+- Check pod status:
+  ```bash
+  kubectl get pods -n <namespace>
