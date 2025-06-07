@@ -1,20 +1,15 @@
 # Joining a New Worker Node to the Kubernetes Cluster
 
-Once the required tools such as `kubeadm`and `kubelet` are installed on the new node, you can join it to the Kubernetes cluster by following the steps below:
+Ensure that the following are installed on the **new worker node**:
 
 ## 📌 Prerequisites
 
-Ensure that the following are installed on the **new worker node**:
-
-- `kubeadm`
-- `kubelet`
-
-Also make sure:
-
-- The node can reach the control plane over the network.
-- The control plane node has port **6443** open for API communication.
+📚 For installing Kubernetes prerequisites (like `kubeadm`, `kubelet`, and `kubectl`) on Ubuntu-based worker nodes, refer to this helpful guide:  
+🔗 [Install Kubernetes on Ubuntu 22.04 - LinuxTechi](https://www.linuxtechi.com/install-kubernetes-on-ubuntu-22-04/)
 
 ---
+
+Once the required tools such as `kubeadm`and `kubelet` are installed on the new node, you can join it to the Kubernetes cluster by following the steps below:
 
 ## 🚀 Step 1: Generate the Join Command (on Control Plane Node)
 
@@ -98,12 +93,36 @@ This means that when a new node is being added to the Kubernetes cluster, severa
 
 ---
 
-## 🔧 Troubleshooting Strategy
+🧯 Troubleshooting – Common Issues When Adding a New Node
+When adding a new node to a Kubernetes cluster, you may encounter issues that prevent pods from running correctly or block network communication. Below are two common issues typically seen on new nodes and how to resolve them:
 
-If any errors occur during node initialization, the above pods should be verified and troubleshooted **in the specified order**.
+❌ Issue: Pods Failing to Connect to NFS
+Pods that use NFS volumes (e.g., for PersistentVolumes) may fail to mount 
 
-For each pod:
+📌 Solution
+Run the following commands on the new node to install NFS support:
 
-- Check pod status:
-  ```bash
-  kubectl get pods -n <namespace>
+bash
+sudo apt update
+sudo apt install nfs-common
+
+----
+
+❌ Issue: Network Communication Problems (kube-proxy & Pod Networking)
+
+Pods cannot communicate with each other because kube-proxy fails to operate properly
+
+📌 Cause
+The nf_conntrack kernel module, which handles network connection tracking, may not be loaded by default on some OS/kernel versions.
+
+📌 Solution
+Manually load the module and ensure it's loaded on reboot:
+
+```bash
+sudo modprobe nf_conntrack
+echo "nf_conntrack" | sudo tee /etc/modules-load.d/nf_conntrack.conf
+```bash
+
+💡 Note: These two issues are commonly encountered only on newly added nodes and should be addressed before joining the node to the cluster.
+
+
