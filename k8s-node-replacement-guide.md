@@ -9,7 +9,7 @@ Ensure that the following are installed on the **new worker node**:
 
 ---
 
-Once the required tools such as `kubeadm`and `kubelet` are installed on the new node, you can join it to the Kubernetes cluster by following the steps below:
+Once the required tools are installed on the new node, you can join it to the Kubernetes cluster by following the steps below:
 
 ## 🚀 Step 1: Generate the Join Command (on Control Plane Node)
 
