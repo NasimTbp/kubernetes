@@ -17,7 +17,6 @@ Run the following command **on the control plane (master) node** to generate a s
 
 ```bash
 sudo kubeadm token create --print-join-command
-```bash
 
 ##  Example output
 
