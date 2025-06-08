@@ -19,14 +19,11 @@ Run the following command **on the control plane (master) node** to generate a s
 sudo kubeadm token create --print-join-command
 ```
 
-##  Example output
-
-kubeadm join 172.11.11.2:6443 --token zvga31.e67apmsqzro3vgad --discovery-token-ca-cert-hash sha256:3c82536953bfc455c713133685196b82d17428ee2005b665909d5dbb29ac6619
-
-
 
 ## 🖥️ Step 2: Join the Worker Node to the Cluster
 Run the generated kubeadm join command on the new worker node:
+
+##  Example output
 
 ```
 sudo kubeadm join 172.11.11.2:6443 --token zvga31.e67apmsqzro3vgad \
@@ -48,9 +45,9 @@ Replace hq-k8s-wtest1 with the actual node name (use kubectl get nodes to find i
 ## ✅ Step 4: Verify Node Status
 📍 Run this on the control plane node
 
-```bash
+```
 kubectl get nodes
-```bash
+```
 
 You should see something like:
 
@@ -93,22 +90,23 @@ This means that when a new node is being added to the Kubernetes cluster, severa
 
 ---
 
-🧯 Troubleshooting – Common Issues When Adding a New Node
+# 🧯 Troubleshooting – Common Issues When Adding a New Node
 When adding a new node to a Kubernetes cluster, you may encounter issues that prevent pods from running correctly or block network communication. Below are two common issues typically seen on new nodes and how to resolve them:
 
-❌ Issue: Pods Failing to Connect to NFS
+## ❌ Issue1: Pods Failing to Connect to NFS
 Pods that use NFS volumes (e.g., for PersistentVolumes) may fail to mount 
 
 📌 Solution
 Run the following commands on the new node to install NFS support:
 
-bash
+```
 sudo apt update
 sudo apt install nfs-common
+```
 
 ----
 
-❌ Issue: Network Communication Problems (kube-proxy & Pod Networking)
+## ❌ Issue2: Network Communication Problems (kube-proxy & Pod Networking)
 
 Pods cannot communicate with each other because kube-proxy fails to operate properly
 
@@ -118,10 +116,10 @@ The nf_conntrack kernel module, which handles network connection tracking, may n
 📌 Solution
 Manually load the module and ensure it's loaded on reboot:
 
-```bash
+```
 sudo modprobe nf_conntrack
 echo "nf_conntrack" | sudo tee /etc/modules-load.d/nf_conntrack.conf
-```bash
+```
 
 💡 Note: These two issues are commonly encountered only on newly added nodes and should be addressed before joining the node to the cluster.
 
