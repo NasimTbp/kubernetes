@@ -4,7 +4,7 @@ Ensure that the following are installed on the **new worker node**:
 
 ## 📌 Prerequisites
 
-📚 For installing Kubernetes prerequisites (like `kubeadm`, `kubelet`, and `kubectl`) on Ubuntu-based worker nodes, refer to this helpful guide:  
+For installing Kubernetes prerequisites (like `kubeadm`, `kubelet`, and `kubectl`) on Ubuntu-based worker nodes, refer to this helpful guide:  
 🔗 [Install Kubernetes on Ubuntu 22.04 - LinuxTechi](https://www.linuxtechi.com/install-kubernetes-on-ubuntu-22-04/)
 
 ---
@@ -59,14 +59,14 @@ hq-k8s-wtest2   Ready    worker2         3d     v1.32.5
 
 -----------------------------------------------------------------
 
-# Node Initialization Checklist in Kubernetes
+# ✅ Node Initialization Checklist in Kubernetes
 When a new node is being added to the Kubernetes cluster, two key conditions must be met:
 1. Node must be in Ready state – this means the node has successfully joined the cluster and is communicating with the control plane (master).
 2. Node must be schedulable – this means the node is able to accept and run pods.
 To ensure the second condition is met, the following critical system pods must be verified and running correctly
 This means that when a new node is being added to the Kubernetes cluster, several system pods must be running properly on the node to ensure successful integration and schedulability
 
-## ✅ Required Pods (in order of importance)
+## Required Pods (in order of importance)
 
 1. **kube-proxy**  
    - Namespace: `kube-system`  
@@ -96,25 +96,22 @@ When adding a new node to a Kubernetes cluster, you may encounter issues that pr
 ## ❌ Issue1: Pods Failing to Connect to NFS
 Pods that use NFS volumes (e.g., for PersistentVolumes) may fail to mount 
 
-📌 Solution
-Run the following commands on the new node to install NFS support:
+Solution: Run the following commands on the new node to install NFS support:
 
 ```
 sudo apt update
 sudo apt install nfs-common
 ```
 
-----
+
 
 ## ❌ Issue2: Network Communication Problems (kube-proxy & Pod Networking)
 
 Pods cannot communicate with each other because kube-proxy fails to operate properly
 
-📌 Cause
-The nf_conntrack kernel module, which handles network connection tracking, may not be loaded by default on some OS/kernel versions.
+Cause: The nf_conntrack kernel module, which handles network connection tracking, may not be loaded by default on some OS/kernel versions.
 
-📌 Solution
-Manually load the module and ensure it's loaded on reboot:
+Solution: Manually load the module and ensure it's loaded on reboot:
 
 ```
 sudo modprobe nf_conntrack
@@ -123,4 +120,31 @@ echo "nf_conntrack" | sudo tee /etc/modules-load.d/nf_conntrack.conf
 
 💡 Note: These two issues are commonly encountered only on newly added nodes and should be addressed before joining the node to the cluster.
 
+---
 
+# ⚙️ Configuring containerd to Use systemd as the cgroup Driver
+When setting up worker nodes in a Kubernetes cluster, it is essential to configure containerd to use systemd as the cgroup driver. 
+A mismatch between the cgroup driver used by containerd and the one used by kubelet (typically systemd) can lead to resource management issues and unstable pod behavior. 
+To ensure compatibility and avoid such problems, containerd’s default configuration must be updated.
+
+## Steps to configure containerd:
+
+1. Generate the default configuration file and save it to /etc/containerd/config.toml:
+
+```
+containerd config default | sudo tee /etc/containerd/config.toml >/dev/null 2>&1
+```
+
+2. Modify the configuration file to enable systemd as the cgroup driver:
+
+```
+sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
+```
+
+3. Restart and enable the containerd service to apply the changes:
+
+```
+sudo systemctl restart containerd
+```
+
+💡 After performing these steps, containerd will be properly aligned with kubelet in terms of cgroup management, ensuring more stable and predictable behavior of workloads on the worker nodes.
