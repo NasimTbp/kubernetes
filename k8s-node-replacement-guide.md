@@ -56,8 +56,13 @@ hq-k8s-testm    Ready    control-plane   321d   v1.32.5
 hq-k8s-wtest1   Ready    worker1         3d1h   v1.32.5
 hq-k8s-wtest2   Ready    worker2         3d     v1.32.5
 
+NAME | STATUS | ROLES | AGE | VERSION 
+--- | --- | --- | --- |---
+hq-k8s-testm | Ready | control-plane | 321d | v1.32.5 
+hq-k8s-wtest1 | Ready | worker1 | 3d1h | v1.32.5 
+hq-k8s-wtest2 | Ready | worker2 | 3d | v1.32.5 
 
------------------------------------------------------------------
+---
 
 # ✅ Node Initialization Checklist in Kubernetes
 When a new node is being added to the Kubernetes cluster, two key conditions must be met:
