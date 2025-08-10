@@ -100,7 +100,7 @@ ACL LIST
 
 Then, you need to add the serviceName to your connection string like this:
 
-"ConnectionString": "test-sentinel-redis.redis-sentinel-test.svc.cluster.local:26379,password=thEreDisPaSsword,serviceName=mymaster,ssl=False,allowAdmin=true",
+"ConnectionString": "test-sentinel-redis.redis-sentinel-test.svc.cluster.local:26379,password=----,serviceName=mymaster,ssl=False,allowAdmin=true",
 
 ---
 
