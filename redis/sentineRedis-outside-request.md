@@ -25,6 +25,7 @@ It connects to Sentinel, identifies the current Master pod, and labels it with `
 It also removes this label from all other Redis pods, ensuring that **only the actual Master pod is labeled** at any time.
 
 This makes it possible for services that need to connect to the Master to use a Kubernetes Service with a selector like `master=true`.
+You can add this label to redis service or create new service (service-setlabel.yaml file)
 
 ---
 
