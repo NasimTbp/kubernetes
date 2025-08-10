@@ -30,12 +30,14 @@ This makes it possible for services that need to connect to the Master to use a 
 
 # ✅ **Implemented Solution**
 
-The script solves this by querying Sentinel using `redis-cli` to get the current Master’s IP and resolving it back to a pod name:
+The script (setLabel.sh file) solves this by querying Sentinel using `redis-cli` to get the current Master’s IP and resolving it back to a pod name:
 
+```
 🧩  kubectl exec -n "$NAMESPACE" "$POD_NAME" -c "$CONTAINER" -- sh -c "redis-cli -h $SENTINEL_HOST -p $SENTINEL_PORT <<EOF
     AUTH $REDIS_PASSWORD
     SENTINEL get-master-addr-by-name $MASTER_NAME
     EOF"
+```
 
 Then:
 
@@ -51,7 +53,7 @@ This ensures that at any given time, only the current Master pod has the label.
 
 Since failover can happen at any moment, the script needs to run periodically.
 
-To achieve that, the script (wrapper.sh) is executed every minute as a CronJob. Inside that job, the following snippet runs the main script every 15 seconds, 4 times within the minute:
+To achieve that, the script (wrapper.sh file) is executed every minute as a CronJob. Inside that job, the following snippet runs the main script every 15 seconds, 4 times within the minute:
 
 This ensures the detection stays up to date, roughly within 15 seconds of a failover.
 
@@ -74,7 +76,9 @@ Once the Redis Master pod is correctly labeled, the following steps are needed t
 
 In your application (e.g., .NET, Java, etc.), you should point the Redis connection string to the **name of the service that selects the Master**, like:
 
-🧩 "Redis": "expose-redis-master.redis-sentinel-test.svc.cluster.local:6379,password=thEreDisPaSsword,ssl=False,allowAdmin=true",
+```
+🧩 "Redis": "expose-redis-master.redis-sentinel-test.svc.cluster.local:6379,password=----,ssl=False,allowAdmin=true",
+```
 
 This ensures that the app always connects to the correct Redis Master after failover.
 
