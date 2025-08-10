@@ -73,9 +73,7 @@ SENTINEL slaves mymaster
 
 🧩
 
-In this case, the `serviceName` is:
-
-mymaster
+In this case, the `serviceName` is: 📍 mymaster
 
 ---
 ✅ Check Extra Common configuration (added in common.conf)
@@ -100,7 +98,9 @@ ACL LIST
 
 Then, you need to add the serviceName to your connection string like this:
 
+```
 "ConnectionString": "test-sentinel-redis.redis-sentinel-test.svc.cluster.local:26379,password=----,serviceName=mymaster,ssl=False,allowAdmin=true",
+```
 
 ---
 
@@ -108,7 +108,9 @@ Then, you need to add the serviceName to your connection string like this:
 
 You can also set serviceName in the helm chart configuration in override as follows:
 
+```
 sentinel:
   masterSet: mymaster
+```
 
 -----
