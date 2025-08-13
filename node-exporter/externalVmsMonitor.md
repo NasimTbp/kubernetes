@@ -22,10 +22,12 @@ https://release-assets.githubusercontent.com/.../node_exporter-1.9.1.linux-amd64
 
 The following commands were executed:
 
-🧩 tar -zxvf node_exporter-1.9.1.linux-amd64.tar.gz
-🧩 sudo mv node_exporter-1.9.1.linux-amd64/node_exporter /usr/local/bin/
+```
+tar -zxvf node_exporter-1.9.1.linux-amd64.tar.gz
+sudo mv node_exporter-1.9.1.linux-amd64/node_exporter /usr/local/bin/
+```
 
-🔗 > Note: There was a typo referring to version 1.8.2 earlier, which was corrected to the correct version 1.9.1.
+🔗 Note: There was a typo referring to version 1.8.2 earlier, which was corrected to the correct version 1.9.1.
 
 ---
 
@@ -33,13 +35,14 @@ The following commands were executed:
 
 A new systemd service file named `node-exporter.service` was created:
 
-
+```
 🧩 sudo nano /etc/systemd/system/node-exporter.service
+```
 
 With the following content:
 
-🧩-------------------------------------🧩
 
+```
 [Unit]
 Description=Prometheus Node Exporter
 After=network.target
@@ -52,7 +55,7 @@ Restart=always
 [Install]
 WantedBy=multi-user.target
 
-🧩-------------------------------------🧩
+```
 
 💡 *Note*: The `--collector.systemd.unit-whitelist` flag ensures that only selected systemd services are monitored.
 
@@ -62,9 +65,11 @@ WantedBy=multi-user.target
 
 The following commands were used to enable and start Node Exporter:
 
-🧩 sudo systemctl daemon-reload
-🧩 sudo systemctl enable node-exporter
-🧩 sudo systemctl restart node-exporter
+```
+sudo systemctl daemon-reload
+sudo systemctl enable node-exporter
+sudo systemctl restart node-exporter
+```
 
 
 ✅ At this point, the service was successfully running and available on port `:9100`.
@@ -81,7 +86,9 @@ To allow Prometheus to scrape metrics from the Node Exporter, the following Kube
 
 The YAML configuration files for these resources are located in:
 
-💻💻 /root/k8s-deployments/prometheus-manual-configs/external-vms-monitor/configs.yaml
+```
+💻 /root/k8s-deployments/prometheus-manual-configs/external-vms-monitor/configs.yaml
+```
 
 📌 These allow Prometheus to discover and scrape the Node Exporter either from outside the cluster or via a defined static endpoint or NodePort.
 📌 In the Endpoint YAML file, you need to add the IP address of the VM where Node Exporter is installed, so that Prometheus can scrape metrics from it.
