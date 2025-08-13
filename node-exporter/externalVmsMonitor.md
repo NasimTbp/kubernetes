@@ -1,4 +1,4 @@
-# this directory is for node-exporter configs that scraps external nodes inside Devops env.
+# this directory shows node-exporter configs that scraps external nodes inside Devops env.
 
 Note:
 
