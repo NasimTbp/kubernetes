@@ -101,3 +101,6 @@ Node Exporter was successfully installed and configured. Using a specific whitel
 The setup is now ready for Prometheus to collect metrics via the configured `ServiceMonitor`, and these metrics can also be visualized in Grafana dashboards.
 
 ---
+
+✅✅ NOTICE: For the cluster nodes, you need to include the Node Exporter configuration under the Prometheus Helm chart override values file
+
