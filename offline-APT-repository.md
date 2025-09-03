@@ -247,12 +247,99 @@ curl -u <username>:<password> --upload-file kubelet_1.31.12-1.1.deb \ http://<ne
 
 ---
 
-🔍 7. Preparing the Public Key for Clients
+### 🔍 7. Preparing the Public Key for Clients
 
 💻 After Nexus is set up, the public key (nexus-apt-repo.public.gpg.key) must be distributed to all client nodes. 
     This ensures that the cluster nodes can verify and install the signed packages from the offline APT repository.
 
 💻 Transfer the public key to each client VM, so they can import it and fetch the Debian packages from the Nexus repository.
+
+---- 
+
+# 📑 Phase Three Report – Configuring Clients to Use the Offline APT Repository
+
+### 🔍 1. Introduction
+
+💻 After creating the APT Hosted Repository on the Nexus server and uploading the Kubernetes packages (Phase Two), 
+    cluster nodes must be configured to download kubeadm, kubectl, and kubelet packages offline from the internal repository (offline-apt).
+
+This process includes three main steps:
+ 🔹 Transferring the Nexus public key to the nodes and placing it in the appropriate directory.
+ 🔹 Adding the Nexus repository to the APT sources list.
+ 🔹 Updating APT and testing package downloads.
+
+---
+
+### 🔍 2. Transferring the Nexus Public Key to Nodes
+
+💻The public key (created in Phase Two: `nexus-apt-repo.public.gpg`) must be copied to each cluster node and placed in the `trusted.gpg.d` directory.
+
+🔹 2.1. Copy the key to the node
+
+⚠️ Assuming the key is located in `~/Downloads` --> yoy should move this file to /etc/apt/trusted.gpg.d/
+```
+chmod 644 ~/Downloads/nexus-apt-repo.public.gpg
+sudo mv ~/Downloads/nexus-apt-repo.public.gpg /etc/apt/trusted.gpg.d/
+```
+
+🔹 2.2. Verify the key installation
+
+```
+ls -l /etc/apt/trusted.gpg.d/
+```
+The output should include the file `nexus-apt-repo.public.gpg`.
+
+---
+
+### 🔍 3. Adding the Nexus Repository to APT
+📂 The Nexus repository must be added to the APT sources list. You can either edit `/etc/apt/sources.list` or create a new file in `/etc/apt/sources.list.d/`.
+
+*Example:
+```
+sudo nano /etc/apt/sources.list
+```
+Add the following line:
+```
+# this is a private repository for OFFLINE Kubernetes and Debian packages
+deb https://repo.acctechco.com/repository/offline-apt/ jammy main
+```
+
+---
+
+### 🔍 4. Updating APT and Fixing Architecture Issues
+
+💻 Update the APT cache:
+```
+sudo apt update
+```
+
+⚠️ If an i386 architecture error appears (since the packages are only for amd64), remove the i386 architecture:
+```
+sudo dpkg --remove-architecture i386
+sudo apt update
+```
+
+💻 After this step, the output should show no errors, and the offline-apt repository will be available in the sources list.
+
+---
+
+### 🔍 5. Testing Kubernetes Package Downloads
+
+💻 To verify proper functionality, download one of the packages:
+
+```
+cd /tmp
+apt download kubeadm=1.31.12-1.1
+```
+
+🚀 The package should be successfully downloaded from the internal repository.
+
+Sample output:
+```
+    Get:1 https://repo.acctechco.com/repository/offline-apt jammy/main amd64 kubeadm amd64 1.31.12-1.1 [11.5 MB]
+    Fetched 11.5 MB in 0s (67.3 MB/s)
+```
+
 
 
 
