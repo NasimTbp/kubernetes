@@ -1,5 +1,6 @@
 This document is a technical report detailing the preparation, configuration, and use of an offline APT repository for installing and upgrading the core Kubernetes components (including `kubeadm`, `kubectl`, and `kubelet`) in environments without direct internet access.
 
+🔗 This report is based of: https://wiki.scanframe.com/Configuration/Linux/nexus-apt-hosted-repo
 
 🎯  Objectives of this report:**
 
