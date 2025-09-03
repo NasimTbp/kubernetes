@@ -137,3 +137,122 @@ sudo apt-cache madison kubeadm
 
 ---
 
+# 📑 Phase Two Report – Creating an APT Hosted Repository in Nexus for Kubernetes Packages
+
+### 🔍 1. Introduction
+
+In this phase, we will transfer the previously downloaded Kubernetes packages (kubeadm, kubelet, kubectl) from an internet-enabled node to Nexus Repository and create an APT Hosted Repository. 
+This repository will serve as the offline APT repo for cluster nodes.
+
+🟢 The process includes:
+```  
+  🔹 Generating GPG keys (public and private) on the Nexus server.
+  🔹 Creating and configuring the APT Hosted Repository in Nexus.
+  🔹 Uploading the downloaded Debian packages into the repository.
+  🔹 Preparing the public key for client nodes.
+```
+### 🔍 2. Downloading Kubernetes Packages (on the internet-enabled node)
+
+💻 First, on a node with internet access (and configured proxy), download the required packages.
+    We use apt-get download so that .deb files are retrieved without installation:
+```
+sudo apt-get update apt-get download kubelet=1.31.12-1.1 kubectl=1.31.12-1.1 kubeadm=1.31.12-1.1 
+```
+💻 The .deb files will be saved in the current directory. These files should then be transferred to the Nexus Repository VM (e.g., using scp). 
+    Alternatively, these downloads could also be performed directly on the Nexus host if it has internet access.
+
+---
+
+### 🔍 3. Generating GPG Keys on the Nexus Server
+
+APT repositories require package signing. Therefore, we create a GPG key pair on the Nexus server.
+
+🔹 3.1 Install GPG
+```
+sudo apt-get update && sudo apt-get install -y gpg 
+```
+
+🔹 3.2 Generate a new key
+```
+gpg --gen-key 
+```
+  💻 During this step, you will be prompted for name, email, and passphrase. Once complete, the key pair will be generated.
+
+🔹 3.3 List existing keys
+```
+gpg --list-keys 
+```
+  💻 The newly created key will appear with a Key ID. This Key ID will be required in later steps.
+
+🔹 3.4 Export keys
+
+💻 Public key (for clients):
+```
+gpg --armor --output nexus-apt-repo.public.gpg.key --export <KEY_ID> 
+```
+
+💻 Private key (for Nexus):
+```
+gpg --armor --output nexus-apt-repo.private.gpg.key --export-secret-key <KEY_ID>
+```
+
+💻 Binary format exports (optional):
+```
+gpg --output nexus-apt-repo.public.gpg --export <KEY_ID> gpg --output nexus-apt-repo.private.gpg --export-secret-key <KEY_ID> 
+```
+
+⚠️ Note: The private key must be provided in the Nexus Repository configuration under Signing Key for the offline APT repository.
+
+---
+
+### 🔍 4. Creating the APT Hosted Repository in Nexus
+
+🟢 Log in to the Nexus Web UI.
+```  
+  🔹 Go to Repositories → Create repository → APT (hosted).
+  🔹 Enter a repository name (e.g., offline-apt).
+  🔹 In APT Settings → Signing Key, paste the contents of the private key (nexus-apt-repo.private.gpg.key) generated earlier.
+  🔹 Set the distribution (e.g., jammy) and configure the passphrase for key recovery.
+  🔹 Adjust other settings (Blob store, Cleanup policies) according to organizational standar   ds.
+  🔹 Save to finalize repository creation.
+```
+---
+
+### 🔍 5. Granting Upload Permissions
+
+🟢 The user responsible for uploading .deb packages must have at least the following roles:
+```  
+  🔹 nx-repository-view-*-*-edit
+  🔹 nx-repository-view-*-*-read
+```
+🟢 This can be configured under Security → Roles / Users in Nexus.
+
+---
+
+### 🔍 6. Uploading Debian Packages to Nexus
+
+🟢 The downloaded .deb files from Step 2 must be uploaded into the repository.
+
+💻 Method 1: Web UI
+```  
+  🔹 Navigate to Browse → offline-apt.
+  🔹 Select Upload.
+  🔹 Choose the .deb files and upload.
+```
+💻 Method 2: REST API / curl 
+
+```
+curl -u <username>:<password> --upload-file kubelet_1.31.12-1.1.deb \ http://<nexus-host>:8081/repository/offline-apt/ 
+```
+
+---
+
+🔍 7. Preparing the Public Key for Clients
+
+💻 After Nexus is set up, the public key (nexus-apt-repo.public.gpg.key) must be distributed to all client nodes. 
+    This ensures that the cluster nodes can verify and install the signed packages from the offline APT repository.
+
+💻 Transfer the public key to each client VM, so they can import it and fetch the Debian packages from the Nexus repository.
+
+
+
