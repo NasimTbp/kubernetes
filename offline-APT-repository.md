@@ -302,7 +302,7 @@ sudo nano /etc/apt/sources.list
 Add the following line:
 ```
 # this is a private repository for OFFLINE Kubernetes and Debian packages
-deb https://repo.acctechco.com/repository/offline-apt/ jammy main
+deb https://repo.mycompany.com/repository/offline-apt/ jammy main
 ```
 
 ---
@@ -337,7 +337,7 @@ apt download kubeadm=1.31.12-1.1
 
 Sample output:
 ```
-    Get:1 https://repo.acctechco.com/repository/offline-apt jammy/main amd64 kubeadm amd64 1.31.12-1.1 [11.5 MB]
+    Get:1 https://repo.mycompany.com/repository/offline-apt jammy/main amd64 kubeadm amd64 1.31.12-1.1 [11.5 MB]
     Fetched 11.5 MB in 0s (67.3 MB/s)
 ```
 
