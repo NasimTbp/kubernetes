@@ -6,41 +6,33 @@ Updating containerd can be done via the system's **Package Manager** or by downl
 For upgrading containerd in Kubernetes, the following reference can be used:
 🔗 [Upgrade Containerd in Kubernetes](https://www.vijay-narayanan.com/posts/kubernetes/upgrade-containerd-kubernetes/)
 
-01. "Draining node..."
+📌 01. "Draining node..."
 ```
 kubectl drain $(hostname) --ignore-daemonsets --delete-emptydir-data
 ```
 
----
-
-02. "Stopping containerd..."
+📌 02. "Stopping containerd..."
 ```
 sudo systemctl stop containerd
 ```
 
----
-
-03. "Removing old containerd..."
+📌 03. "Removing old containerd..."
 ```
 sudo apt remove -y containerd
 ```
 
----
-
-04. "Downloading containerd "
+📌 04. "Downloading containerd "
 you can find containerd in : https://github.com/containerd/containerd/releases
 
----
 
-05. "Extracting and installing containerd..."
+📌 05. "Extracting and installing containerd..."
 ```
 tar -xvf containerd-2.1.4-linux-amd64.tar.gz
 sudo cp bin/* /usr/bin/
 ```
 
----
 
-06. "Setting up systemd service..."
+📌 06. "Setting up systemd service..."
 ```
 sudo systemctl unmask containerd
 sudo nano /etc/systemd/system/containerd.service
@@ -92,35 +84,30 @@ WantedBy=multi-user.target
 
 ```
 
----
 
-07. "Reload syatem"
+📌 07. "Reload syatem"
 ```
 sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
 sudo systemctl enable --now containerd
 ```
 
----
 
-08. "Generating config and setting SystemdCgroup..."
+📌 08. "Generating config and setting SystemdCgroup..."
 ```
 sudo mkdir -p /etc/containerd
 sudo bash -c "containerd config default > /etc/containerd/config.toml"
 sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
 ```
 
----
 
-09. "Restarting containerd and kubelet..."
+📌 09. "Restarting containerd and kubelet..."
 ```
 sudo systemctl restart containerd
 sudo systemctl restart kubelet
 ```
 
----
-
-10. "Updated. Current containerd version:"
+📌 10. "Updated. Current containerd version:"
 ```
 containerd --version
 ```
