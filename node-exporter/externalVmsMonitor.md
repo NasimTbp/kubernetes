@@ -36,7 +36,7 @@ sudo mv node_exporter-1.9.1.linux-amd64/node_exporter /usr/local/bin/
 A new systemd service file named `node-exporter.service` was created:
 
 ```
-🧩 sudo nano /etc/systemd/system/node-exporter.service
+sudo nano /etc/systemd/system/node-exporter.service
 ```
 
 With the following content:
@@ -91,6 +91,7 @@ The YAML configuration files for these resources are located in:
 ```
 
 📌 These allow Prometheus to discover and scrape the Node Exporter either from outside the cluster or via a defined static endpoint or NodePort.
+
 📌 In the Endpoint YAML file, you need to add the IP address of the VM where Node Exporter is installed, so that Prometheus can scrape metrics from it.
 
 ---
