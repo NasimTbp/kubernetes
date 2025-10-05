@@ -265,9 +265,11 @@ curl -u <username>:<password> --upload-file kubelet_1.31.12-1.1.deb \ http://<ne
     cluster nodes must be configured to download kubeadm, kubectl, and kubelet packages offline from the internal repository (offline-apt).
 
 This process includes three main steps:
+```  
  🔹 Transferring the Nexus public key to the nodes and placing it in the appropriate directory.
  🔹 Adding the Nexus repository to the APT sources list.
  🔹 Updating APT and testing package downloads.
+```
 
 ---
 
