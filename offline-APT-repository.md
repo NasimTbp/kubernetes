@@ -343,6 +343,10 @@ Sample output:
     Fetched 11.5 MB in 0s (67.3 MB/s)
 ```
 
+---
 
+⚠️⚠️⚠️ NOTE ⚠️⚠️⚠️
+
+When you upgrade a three-master Kubernetes cluster, only the **first time** you run `kubeadm upgrade apply` on one of the masters, the system component manifests (including `kube-proxy`) are updated to the new version. Since `kube-proxy` is deployed as a **DaemonSet** across all nodes (masters and workers), this change triggers Kubernetes to perform a **rolling update**, replacing the `kube-proxy` pod on each node one by one with the new version. When you upgrade the remaining two masters, `kube-proxy` does not change again, because its manifest was already updated. In short, this process happens only once per cluster upgrade to keep the `kube-proxy` version consistent with the upgraded control plane and ensure that cluster networking remains stable.
 
 
