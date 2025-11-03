@@ -1,0 +1,100 @@
+
+### 🟢 SSL Certificate Configuration for gRPC Communication in Kubernetes
+
+In several Kubernetes applications, inter-service communication relies on **gRPC**. When **Istio** is enabled in the cluster, mutual TLS (mTLS) encryption is automatically handled by Istio, which removes the need for any manual configuration. However, in environments **without Istio**, the DevOps team manually generates and installs SSL certificates to secure communication between gRPC-based services.
+
+---
+
+#### Certificate Generation Process
+
+1. **Creating the Root Certificate Authority (CA)**
+   A local Root CA is generated to sign all service-specific certificates.
+   The following commands create the root key and certificate:
+
+   ```
+   openssl genrsa -out rootCA.key 4096
+   openssl req -x509 -new -nodes -key rootCA.key -sha256 -days 1825 -out rootCA.crt \
+     -subj "/CN=MyK8sRootCA"
+   ```
+
+2. **Generating the Service Key and CSR**
+   Each gRPC service that needs to be secured must have its own private key and certificate signing request (CSR).
+   For example:
+
+   ```
+   openssl genrsa -out pv.key 2048
+   openssl req -new -key pv.key -out pv.csr \
+     -subj "/CN=grpc-kestrel-app.default.svc.cluster.local"
+   ```
+
+   ✅📍 It is important that the Common Name (CN) exactly matches the Kubernetes internal DNS name of the service.
+
+3. **Signing the CSR Using the Root CA**
+   The CSR is signed with the previously created Root CA, producing the service certificate:
+
+   ```
+   openssl x509 -req -in pv.csr -CA rootCA.crt -CAkey rootCA.key -CAcreateserial \
+     -out cert.pem -days 3650 -sha256
+   ```
+
+4. **Building the Full Certificate Chain**
+   The service certificate and the root certificate are concatenated into a single file:
+
+   ```
+   cat cert.pem rootCA.crt > fullchain.pem
+   ```
+
+📍 This ensures that clients can validate the complete certificate chain when connecting to the service.
+
+---
+
+#### 🟢 Aligning with the Application Configuration
+
+The development team’s code expects specific certificate file names. To maintain compatibility, we rename the generated files as follows:
+
+* `fullchain.pem` is renamed to `cert.pem`
+* `pv.key` is renamed to `privatekey.pem`
+
+These names correspond to the file paths referenced in the gRPC service code, so keeping them consistent avoids any runtime errors or configuration mismatches.
+
+---
+
+#### Mounting Certificates in Kubernetes Pods
+
+1. **gRPC Server Application**
+   For applications where gRPC and WMS are enabled, the certificate files are mounted inside the container under the path `/app/cert`.
+   This is achieved using a **PersistentVolume (PV)** and **PersistentVolumeClaim (PVC)** that contain the `cert.pem` file (originally `fullchain.pem`).
+   This allows the gRPC server to load its TLS credentials directly from the mounted volume.
+
+sample:
+```
+      volumes:
+        - name: ssl-cert-volume
+          persistentVolumeClaim:
+            claimName: hamyar-esales-hotfix
+```
+```
+          volumeMounts:
+            - name: ssl-cert-volume
+              mountPath: /app/cert
+```
+2. **gRPC Client Application**
+   For applications that need to connect to the gRPC server, the certificate chain file (`cert.pem`, which corresponds to `fullchain.pem`) is provided via a **ConfigMap**.
+   Mounting the file through a ConfigMap allows the client to verify the server’s certificate during the TLS handshake without needing a persistent volume.
+
+---
+
+#### Summary
+
+In summary:
+
+* When Istio is not available, SSL certificates are manually generated to secure gRPC traffic.
+* Each gRPC service uses a certificate signed by a locally generated Root CA.
+* File names are standardized (`cert.pem` and `privatekey.pem`) to match the application’s internal configuration.
+* gRPC servers mount certificates via PersistentVolumes, while clients use ConfigMaps for certificate validation.
+
+This configuration ensures encrypted and authenticated communication between gRPC-based microservices in Kubernetes clusters without Istio, maintaining both security and compatibility with the existing deployment structure.
+
+---
+
+Would you like me to add a short section at the end that describes “troubleshooting tips” (for example, common certificate errors or how to verify the mounted files inside pods)? That can make the report even more complete for production documentation.
