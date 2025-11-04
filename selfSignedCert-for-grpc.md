@@ -81,10 +81,23 @@ sample:
 2. **gRPC Client Application**
    For applications that need to connect to the gRPC server, the certificate chain file (`cert.pem`, which corresponds to `fullchain.pem`) is provided via a **ConfigMap**.
    Mounting the file through a ConfigMap allows the client to verify the server’s certificate during the TLS handshake without needing a persistent volume.
-
+   ```
+      volumes:
+        - name: cert-volume
+          configMap:
+            name: hamyar-gateway-to-esales-panel-cert
+            defaultMode: 420
+   ```
+   ```
+             volumeMounts:
+            - name: cert-volume
+              readOnly: true
+              mountPath: /etc/ssl/certs/cert.pem
+              subPath: cert.pem
+   ```
 ---
 
-#### Summary
+#### 🎯 Summary
 
 In summary:
 
@@ -96,5 +109,3 @@ In summary:
 This configuration ensures encrypted and authenticated communication between gRPC-based microservices in Kubernetes clusters without Istio, maintaining both security and compatibility with the existing deployment structure.
 
 ---
-
-Would you like me to add a short section at the end that describes “troubleshooting tips” (for example, common certificate errors or how to verify the mounted files inside pods)? That can make the report even more complete for production documentation.
