@@ -109,3 +109,116 @@ In summary:
 This configuration ensures encrypted and authenticated communication between gRPC-based microservices in Kubernetes clusters without Istio, maintaining both security and compatibility with the existing deployment structure.
 
 ---
+
+
+# 🟢 Method 2 
+
+### IF the above method doesn't worrk properly
+
+# GRPC Self-Signed Certs are here
+cert.pem
+privatekey.pem
+
+these files are used insid the directory /mnt/nfs-data/hamyar-esales-admin-panel/app/cert in nfs and used inside the 
+config map in Kestrel section
+
+
+1️⃣ Create a working directory
+mkdir ~/ssl-gen && cd ~/ssl-gen
+
+2️⃣ Create your Root CA (used to sign all internal certs)
+
+- Generate private key for your CA
+```
+openssl genrsa -out ca.key 4096
+```
+
+- Create the CA certificate (valid 10 years)
+```
+openssl req -x509 -new -nodes -key ca.key -sha256 -days 3650 -out ca.crt \
+-subj "/C=US/ST=Example/L=Example/O=MyOrg/OU=DevOps/CN=internal-root-ca"
+```
+
+- You now have:
+```
+🔹 ca.key  → private key (keep secret)
+🔹 ca.crt  → root CA certificate (distribute to trust stores)
+```
+
+3️⃣ Create a private key for your service
+```
+openssl genrsa -out privatekey.pem 2048
+```
+
+4️⃣ Create a CSR (Certificate Signing Request)
+Create a file named san.cnf (this defines the Subject and SANs):
+```declarative
+[req]
+distinguished_name = req_distinguished_name
+req_extensions = v3_req
+prompt = no
+
+[req_distinguished_name]
+C = US
+ST = Example
+L = Example
+O = MyOrg
+OU = DevOps
+CN = hamyar-esales-svc.hamyar-esales.svc.cluster.local
+
+[v3_req]
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = hamyar-esales-svc.hamyar-esales.svc.cluster.local
+```
+- Now run:
+```
+openssl req -new -key privatekey.pem -out cert.csr -config san.cnf
+```
+
+5️⃣ Sign the CSR with your CA
+```
+openssl x509 -req -in cert.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
+-out cert.pem -days 3650 -sha256 -extfile san.cnf -extensions v3_req
+```
+
+- Now you have:
+
+```
+ca.key          → Root CA private key
+ca.crt          → Root CA certificate
+privatekey.pem  → Service private key
+cert.pem        → Service certificate signed by your CA
+cert.csr        → CSR (you can delete after signing)
+```
+
+6️⃣ Verify the generated certificate
+```
+openssl x509 -in cert.pem -noout -subject -issuer -ext subjectAltName
+openssl verify -CAfile ca.crt cert.pem
+```
+
+
+- Expected output:
+
+```
+subject=CN = org-app-svc.org-app.svc.cluster.local
+issuer=CN = internal-root-ca
+X509v3 Subject Alternative Name:
+DNS:esales-panel-svc, DNS:org-app-svc.org-app.svc, DNS:org-app-svc.org-app.svc.cluster.local
+cert.pem: OK
+```
+
+7️⃣ Transfer certs to a single .pfx file for better use in Kestrel
+
+```
+openssl pkcs12 -export -out cert-with-chain.pfx -inkey privatekey.pem -in cert.pem -certfile ca.crt -passout pass:123NotImportantPassword
+```
+
+8️⃣ Move this files to your app storage ( ex: nfs , ...)
+
+      ca.crt  
+      cert.pem  
+      cert-with-chain.pfx  
+      privatekey.pem
