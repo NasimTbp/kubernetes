@@ -56,6 +56,7 @@ To restore/copy the required files into the VMFS-backed PVC, a temporary **migra
 ### 🔹 Step 1 — Scale down / stop the main application
 
 The main application was taken down (e.g., scaled to 0 replicas or the Deployment was stopped) to avoid any concurrent writes while restoring the PVC content.
+#### 📌 change storageClass from nfs to vmfs
 
 ---
 
