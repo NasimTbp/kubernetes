@@ -107,7 +107,27 @@ sudo systemctl restart containerd
 sudo systemctl restart kubelet
 ```
 
+
+
 📌 10. "Updated. Current containerd version:"
 ```
 containerd --version
 ```
+
+---
+
+📑 # containerd Slice/ControlGroup
+
+💻 This command:
+
+```
+systemctl show containerd -p Slice -p ControlGroup
+```
+
+prints the systemd Slice and the cgroup path for the `containerd` service. The output shows that `containerd` is running under `system.slice` and its cgroup is `/system.slice/containerd.service` (so it is not under `kube.slice`).
+
+💻 This command:
+```
+systemctl show kube.slice -p MemoryMax -p MemoryHigh
+```
+prints the memory limit settings for `kube.slice`. `MemoryHigh=infinity` and `MemoryMax=infinity` mean there is **no soft or hard RAM limit** configured on `kube.slice` itself.
