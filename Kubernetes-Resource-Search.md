@@ -100,6 +100,3 @@ Useful for management reporting and obtaining an overall view of ArgoCD synchron
 
 ---
 
-# Conclusion
-
-The above commands provide an efficient way to review Kubernetes resources and ArgoCD configurations. Using `kubectl` together with `jq` allows accurate extraction and analysis of required information in a short time. This approach is especially valuable in large operational environments where the number of resources is high and manual inspection is inefficient.
