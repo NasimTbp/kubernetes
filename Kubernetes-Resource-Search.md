@@ -1,67 +1,105 @@
-### Complete and Summary Report of the Three Commands:
+# 🎯 Report on Searching and Reviewing Kubernetes Resources and ArgoCD Applications
 
-1. **Command 1: Search in ConfigMaps with `grep`**
+This report presents a set of practical commands for checking the existence of specific values across Kubernetes resources and reviewing configuration settings in ArgoCD Applications. The purpose of these commands is to quickly identify ConfigMaps, resources containing a specific IP address, and Applications with the `prune` option enabled in ArgoCD.
 
-   * **Command**: `kubectl get configmap --all-namespaces | grep "sms-app"`
-   * **Description**: Searches all `ConfigMap` names for the string `"sms-app"`.
-   * **Output**: A list of `ConfigMap` names that contain `"sms-app"`.
-   * **Example Output**:
+---
 
-     ```bash
-     default     sms-app-config
-     production  sms-app-settings
-     ```
+## 📌 1. Checking for a Specific Value in ConfigMaps
 
-2. **Command 2: Search in `ConfigMap` data with `jq`**
+To verify whether a specific value such as `sms-app-hotfix-svc` exists among all ConfigMaps in the cluster, the following command can be used:
 
-   * **Command**:
+```bash
+kubectl get configmap --all-namespaces -o yaml | grep "sms-app-hotfix-svc"
+```
 
-     ```bash
-     kubectl get configmaps --all-namespaces -o json | jq -r '.items[] | select(.data | tostring | contains("172.17.29.21")) | "Namespace: \(.metadata.namespace)\nConfigMap: \(.metadata.name)\n---"'
-     ```
-   * **Description**: Searches `ConfigMap` data for the specific IP `"172.17.29.21"`.
-   * **Output**: `Namespace` and `ConfigMap` names that contain the IP in their data.
-   * **Example Output**:
+---
 
-     ```bash
-     Namespace: default
-     ConfigMap: sms-app-config
-     ---
-     Namespace: production
-     ConfigMap: sms-app-settings
-     ---
-     ```
+## 📌 2. Checking for a Specific Value Along with Namespace and ConfigMap Name
 
-3. **Command 3: Search in all cluster resources with `jq`**
+To find a specific value such as the IP address `172.x.x.x` along with its corresponding Namespace and ConfigMap name, use the following command:
 
-   * **Command**:
+```bash
+kubectl get configmaps --all-namespaces -o json | jq -r '.items[] | select(.data | tostring | contains("172.x.x.x")) | "Namespace: \(.metadata.namespace)\nConfigMap: \(.metadata.name)\n---"'
+```
 
-     ```bash
-     kubectl get all --all-namespaces -o json | jq -r '.items[] | select(tostring | contains("172.17.29.21")) | "Namespace: \(.metadata.namespace)\nResource: \(.kind)\nName: \(.metadata.name)\n---"'
-     ```
-   * **Description**: Searches all cluster resources (pods, services, deployments, etc.) for the IP `"172.17.29.21"`.
-   * **Output**: `Namespace`, resource type, and resource name for those that contain the IP in any part of the object.
-   * **Example Output**:
+### Explanation
 
-     ```bash
-     Namespace: default
-     Resource: Pod
-     Name: my-pod
-     ---
-     Namespace: kube-system
-     Resource: Service
-     Name: kube-dns
-     ---
-     Namespace: production
-     Resource: Deployment
-     Name: app-deployment
-     ---
-     ```
+This command retrieves all ConfigMaps in JSON format and uses `jq` to search within the `data` section for the target value.
 
-### Summary:
+### Output
 
-* **Command 1**: Lists `ConfigMap` names that contain the string `"sms-app"`.
-* **Command 2**: Lists `ConfigMap` names that contain the IP `"172.17.29.21"` in their data.
-* **Command 3**: Searches all cluster resources for the IP `"172.17.29.21"` in any part of the resource.
+* Namespace name
+* ConfigMap name
 
-This report includes all the details and outputs related to each command.
+### Use Case
+
+Helpful when precise identification of where a specific IP address or value is being used is required.
+
+---
+
+## 📌 3. Searching Across All Kubernetes Resources
+
+To search for a specific value such as the IP address `172.x.x.x` across all Kubernetes resources, use the following command:
+
+```bash
+kubectl get all --all-namespaces -o json | jq -r '.items[] | select(tostring | contains("172.x.x.x")) | "Namespace: \(.metadata.namespace)\nResource: \(.kind)\nName: \(.metadata.name)\n---"'
+```
+
+### Explanation
+
+This command retrieves all major Kubernetes resources and searches the entire object structure for the target value.
+
+### Output
+
+* Namespace
+* Resource type
+* Resource name
+
+### Use Case
+
+Useful for performing a comprehensive check to determine where a specific value is being used.
+
+---
+
+## 📌 4. Checking for `prune: true` in ArgoCD Applications
+
+To identify which Applications in ArgoCD have the `prune: true` setting enabled, use the following command:
+
+```bash
+kubectl get applications -n argocd -o json | jq -r '
+.items[]
+| select(.spec.syncPolicy.automated.prune == true)
+| "Application: \(.metadata.name)\n---"'
+```
+
+### Explanation
+
+This command reviews all Applications in the ArgoCD namespace and displays only those where automatic pruning of unused resources is enabled.
+
+### Use Case
+
+Useful for reviewing automated synchronization policies and preventing orphaned resources from remaining in the cluster.
+
+---
+
+## 📌 5. Counting the Number of Applications with `prune: true`
+
+To calculate the total number of Applications with `prune: true`, use the following command:
+
+```bash
+kubectl get applications -n argocd -o json | jq ' [.items[] | select(.spec.syncPolicy.automated.prune == true) ] | length'
+```
+
+### Explanation
+
+This command works similarly to the previous one, but instead of displaying Application names, it returns only the total count.
+
+### Use Case
+
+Useful for management reporting and obtaining an overall view of ArgoCD synchronization settings.
+
+---
+
+# Conclusion
+
+The above commands provide an efficient way to review Kubernetes resources and ArgoCD configurations. Using `kubectl` together with `jq` allows accurate extraction and analysis of required information in a short time. This approach is especially valuable in large operational environments where the number of resources is high and manual inspection is inefficient.
