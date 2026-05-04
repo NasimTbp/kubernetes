@@ -1,0 +1,202 @@
+#---------------------------- Global --------------------------------#
+global:
+  imageRegistry: "repo.acctechco.com:8444"
+  storageClass: "k8s-test-nfs"
+  image:
+    repository: repo.acctechco.com:8444/argoproj/argocd
+#---------------------------- Server --------------------------------#
+server:
+  insecure: true
+  extraArgs:
+    - --insecure                                                     # For istio
+  pdb:
+    enabled: true
+    maxUnavailable: ""
+    minAvailable: "1"
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+      honorLabels: false
+      namespace: ""
+      additionalLabels:
+        release: prometheus
+  #--------------------------- Ingress ------------------------------#
+  ingress:
+    enabled: true
+    ingressClassName: "nginx"
+    hostname: argocd-test.acctechco.com
+    tls:
+      - hosts:
+          - argocd-test.acctechco.com
+        secretName: argocd-tls
+    annotations:
+      kubernetes.io/ingress.class: "nginx"
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/backend-protocol: "HTTP"           # For istio
+      nginx.ingress.kubernetes.io/service-upstream: "true"
+#-------------------------- RepoServer -----------------------------#
+repoServer:
+  pdb:
+    enabled: true
+    maxUnavailable: ""
+    minAvailable: "1"
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+      honorLabels: false
+      namespace: ""
+      additionalLabels:
+        release: prometheus
+#------------------------------ Dex --------------------------------#
+dex:
+  image:
+    repository: repo.acctechco.com:8444/dexidp/dex
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+      honorLabels: false
+      namespace: ""
+      additionalLabels:
+        release: prometheus
+#---------------------------- Redis --------------------------------#
+redis:
+  image:
+    repository: repo.acctechco.com:8444/docker/library/redis
+    pdb:
+      enabled: true
+      maxUnavailable: ""
+      minAvailable: "1"
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+      honorLabels: false
+      namespace: ""
+      additionalLabels:
+        release: prometheus
+#--------------------------- Redis-ha ------------------------------#
+redis-ha:
+  enabled: true
+  image:
+    repository: repo.acctechco.com:8444/docker/library/redis
+  haproxy:
+    image:
+      pullPolicy: IfNotPresent
+      repository: repo.acctechco.com:8444/docker/library/haproxy
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+      honorLabels: false
+      namespace: ""
+      additionalLabels:
+        release: prometheus
+#------------------------- ApplicationSet ---------------------------#
+applicationSet:
+  pdb:
+    enabled: true
+    minAvailable: "1"
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+      honorLabels: false
+      namespace: ""
+      additionalLabels:
+        release: prometheus
+#-------------------------- Controller -----------------------------#
+controller:
+  pdb:
+    enabled: true
+    labels: {}
+    maxUnavailable: ""
+    minAvailable: "1"
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+      honorLabels: false
+      namespace: ""
+      additionalLabels:
+        release: prometheus
+
+
+# ---------------------- Ambient + NetworkPolicy ---------------------- #
+extraObjects:
+
+  # 1️⃣  Allow Istio Ambient HBONE (ztunnel → pod)
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: allow-istio-ambient-hbone
+      namespace: argocd
+    spec:
+      podSelector: {}
+      policyTypes:
+        - Ingress
+      ingress:
+        - ports:
+            - protocol: TCP
+              port: 15008
+
+  # 2️⃣  Allow internal communication inside argocd namespace
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: allow-same-namespace
+      namespace: argocd
+    spec:
+      podSelector: {}
+      policyTypes:
+        - Ingress
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: argocd
+
+  # 3️⃣  Allow nginx ingress to reach argocd-server
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: allow-nginx-to-argocd-server
+      namespace: argocd
+    spec:
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: argocd-server
+      policyTypes:
+        - Ingress
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: ingress-nginx
+          ports:
+            - protocol: TCP
+              port: 80
+            - protocol: TCP
+              port: 443
+            - protocol: TCP
+              port: 8080
+            - protocol: TCP
+              port: 8443
+            - protocol: TCP
+              port: 15008
