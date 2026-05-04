@@ -1,3 +1,4 @@
+# chart: bitnamicharts-rabbitmq , targetRevision: 16.0.14
 #------------------------ Global --------------------------------#
 global:
   imageRegistry: repo.mycompany.com:8xxx
