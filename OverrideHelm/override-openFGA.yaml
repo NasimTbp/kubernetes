@@ -1,4 +1,4 @@
-# chart: openfga , targetRevision: 0.2.52
+# chart: openfga-openfga , targetRevision: 0.2.52
 # ------------------------ Global --------------------------------
 global:
   security:
