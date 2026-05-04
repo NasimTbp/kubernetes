@@ -1,3 +1,4 @@
+# chart: argocd-argocd , targetRevision: 9.4.0
 #---------------------------- Global --------------------------------#
 global:
   imageRegistry: "repo.mycompany.com:8xxx"
