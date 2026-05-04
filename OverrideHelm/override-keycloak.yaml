@@ -3,13 +3,13 @@
 # this was the temporary user
 # after installation and login the user changed to `admin` with the below password
 auth:
-  adminPassword: K8SCkeyCloak2025@)@%
+  adminPassword: -------
   adminUser: adminuser
 
 #---------------------------- Common -----------------------------#
 common:
   global:
-    imageRegistry: repo.acctechco.com:8444
+    imageRegistry: repo.mycompany.com:8xxx
     storageClass: k8s-test-nfs
 
 #----------------------------- Extra -----------------------------#
@@ -29,13 +29,13 @@ extraEnvVars:
 #---------------------------- Global -----------------------------#
 global:
   defaultStorageClass: k8s-test-nfs
-  imageRegistry: repo.acctechco.com:8444
+  imageRegistry: repo.mycompany.com:8xxx
   security:
     allowInsecureImages: true
 
 #---------------------------- Image ------------------------------#
 image:
-  registry: repo.acctechco.com:8444
+  registry: repo.mycompany.com:8xxx
 
 #----------------------- Public Ingress --------------------------#
 ingress:
