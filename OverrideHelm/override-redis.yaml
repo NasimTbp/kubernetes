@@ -1,0 +1,96 @@
+# chart: bitnamicharts - redis , targetRevision: 24.0.0
+#----------------------- Global ------------------------------#
+global:
+  imageRegistry: repo.mycompany.com:8xxx
+  redis:
+    password: ------
+  storageClass: sc-nfs-name
+  security:
+    allowInsecureImages: true
+
+#----------------------- Common ------------------------------#
+common:
+  global:
+    security:
+      allowInsecureImages: true
+
+#----------------------- Replica -----------------------------#
+architecture: replication
+replica:
+  replicaCount: 3
+  persistence:
+    enabled: true
+    size: 8Gi
+  resources:
+    limits:
+      cpu: 80m
+      memory: 128Mi
+    requests:
+      cpu: 40m
+      memory: 64Mi
+
+
+#----------------------- Master -----------------------------#
+master:
+  count: 1
+  persistence:
+    enabled: true
+    size: 8Gi
+  serviceAccount:
+    create: true
+    name: redis-sentinel
+
+#----------------------- VolumePermissions -----------------#
+volumePermissions:
+  enabled: true
+  resources:
+    limits:
+      cpu: 80m
+      memory: 128Mi
+    requests:
+      cpu: 40m
+      memory: 64Mi
+
+#----------------------- Sentinel --------------------------#
+sentinel:
+  enabled: true
+  downAfterMilliseconds: 5000
+  failoverTimeout: 15000
+  quorum: 2
+  resources:
+    limits:
+      cpu: 80m
+      memory: 128Mi
+    requests:
+      cpu: 40m
+      memory: 64Mi
+  persistence:
+    enabled: false
+  service:
+    type: ClusterIP
+    ports:
+      redis: 6379
+      sentinel: 26379
+
+#----------------------- Extra common.conf -----------------#
+commonConfiguration: |
+  min-replicas-to-write 1
+  min-replicas-max-lag 10
+
+#----------------------- Metrics --------------------------#
+metrics:
+  enabled: true
+  redisPassword: thEreDisPaSsword
+  serviceMonitor:
+    enabled: true
+    namespace: prometheus
+    additionalLabels:
+      release: prometheus
+  resources:
+    limits:
+      cpu: 80m
+      memory: 128Mi
+    requests:
+      cpu: 40m
+      memory: 64Mi
+
