@@ -1,0 +1,111 @@
+#------------------------ Global --------------------------------#
+global:
+  imageRegistry: repo.mycompany.com:8xxx
+  storageClass: sc-nfs-name
+  security:
+    allowInsecureImages: true
+
+#--------------------- PodManagementPolicy -----------------------#
+podManagementPolicy: Parallel
+
+#-------------------------- Auth ---------------------------------#
+# NOTE:
+# If rabbitadmin exists in definitions.json,
+# the password in definitions.json will take precedence
+auth:
+  username: rabbitadmin
+  password: ------
+  existingPasswordSecret: rabbit-rabbitmq
+  existingErlangSecret: rabbit-rabbitmq
+
+#--------------------- Persistence -------------------------------#
+persistence:
+  enabled: true
+  storageClass: sc-nfs-name
+  mountPath: /opt/bitnami/rabbitmq/.rabbitmq/mnesia
+  subPath: rabbit-data
+
+#--------------------- NamespaceOverride -------------------------#
+namespaceOverride: rabbit
+
+#----------------------- Plugins --------------------------------#
+plugins: "rabbitmq_management rabbitmq_prometheus rabbitmq_auth_backend_ldap"
+extraPlugins: ""
+
+#----------------------- ReplicaCount ----------------------------#
+replicaCount: 3
+
+#------------------------- PVCRP ---------------------------------#
+persistentVolumeClaimRetentionPolicy:
+  enabled: true
+
+#------------------------- Ingress -------------------------------#
+ingress:
+  enabled: true
+  hostname: rabbitmq-test.mycompany.com
+  ingressClassName: nginx
+  path: /
+  pathType: Prefix
+
+  extraTls:
+    - hosts:
+        - rabbitmq-test.mycompany.com
+      secretName: rabbit-tls  
+
+#---------------------------- Metrics -----------------------------#
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    namespace: prometheus
+    labels:
+      release: prometheus
+    params: {}
+    default:
+      enabled: true
+    detailed:
+      enabled: false
+
+#---------------------------- Service -----------------------------#
+service:
+  type: LoadBalancer
+  loadBalancerIP: 172.29.29.11
+
+#--------------------------- Resources ----------------------------#
+resources:
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+  requests:
+    cpu: 600m
+    memory: 1Gi
+
+#--------------------- Definitions.json Mount --------------------#
+extraVolumes:
+  - name: rabbitmq-definitions
+    configMap:
+      name: rabbitmq-definitions
+
+extraVolumeMounts:
+  - name: rabbitmq-definitions
+    mountPath: /app/rabbitmq-definitions.json
+    subPath: rabbitmq-definitions.json
+    readOnly: true
+
+#------------------------ RabbitMQ config ------------------------#
+extraConfiguration: |-
+  ## Load users / vhosts / permissions / policies
+  load_definitions = /app/rabbitmq-definitions.json
+
+  ## Raft / Memory / Disk tuning
+  raft.wal_max_size_bytes = 50000000
+  raft.wal_max_entries = 32768
+  raft.wal_max_batch_size = 4096
+  raft.snapshot_chunk_size = 1000000
+
+  vm_memory_high_watermark.relative = 0.6
+  vm_memory_high_watermark_paging_ratio = 0.75
+
+  disk_free_limit.absolute = 2GB
+  channel_max = 20
+  heartbeat = 60
