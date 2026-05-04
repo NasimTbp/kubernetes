@@ -10,7 +10,7 @@ auth:
 common:
   global:
     imageRegistry: repo.mycompany.com:8xxx
-    storageClass: k8s-test-nfs
+    storageClass: sc-nfs-name
 
 #----------------------------- Extra -----------------------------#
 extraEnvVars:
@@ -28,7 +28,7 @@ extraEnvVars:
 
 #---------------------------- Global -----------------------------#
 global:
-  defaultStorageClass: k8s-test-nfs
+  defaultStorageClass: sc-nfs-name
   imageRegistry: repo.mycompany.com:8xxx
   security:
     allowInsecureImages: true
