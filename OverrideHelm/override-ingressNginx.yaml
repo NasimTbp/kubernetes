@@ -1,0 +1,57 @@
+#------------------------ Controller ------------------------------#
+controller:
+
+  replicaCount: 2
+
+  image:
+    registry: repo.mycompany.com:8xxx
+    tag: v1.11.2
+    digest: ""
+
+  admissionWebhooks:
+    patch:
+      image:
+        registry: repo.mycompany.com:8xxx
+        image: ingress-nginx/kube-webhook-certgen
+        tag: v1.6.1
+        digest: ""
+      podAnnotations:
+        sidecar.istio.io/inject: "false"
+
+  opentelemetry:
+    image:
+      registry: repo.mycompany.com:8xxx
+
+  #-------------------------- ExtraArgs -----------------------------#
+  # Add --enable-ssl-passthrough to ingress-nginx Deployment To properly handle wss (WebSocket Secure)
+  # and gRPC connections in the hamyar-esales application,
+  # the following argument must be added to the ingress-nginx deployment: This setting enables the
+  # ingress controller to forward encrypted traffic directly to
+  # backend services without terminating TLS, which is required for wss and gRPC protocols.
+  extraArgs:
+    enable-ssl-passthrough: "true"
+  #---------------------------- Service -----------------------------#
+  service:
+    #----------------------------- Port -------------------------------#
+    # The port values in the spec section of the ingress-nginx-1731994273-controller Service should also be defined here.
+    ports:
+      http: 80
+      https: 443
+      proxy-rabbit: 4000
+      proxy-redis-developers: 5001
+      proxy-mongo: 5003
+    #------------------------- loadBalancerIP ------------------------#
+    loadBalancerIP: 172.29.29.9
+
+#----------------------- DefaultBackend --------------------------#
+defaultBackend:
+  image:
+    registry: repo.mycompany.com:8xxx
+#--------------------------- ExtraArgs ---------------------------#
+# The data section of the ConfigMap for TCP services should be defined here.
+tcp:
+  '4000': rabbit/rabbit-rabbitmq:5672
+  '5001': redis-developers/developers-redis-master:6379
+  '5002': temporal/temporal-frontend:7233
+  '5003': mongodb-test/mongodb:27017
+
