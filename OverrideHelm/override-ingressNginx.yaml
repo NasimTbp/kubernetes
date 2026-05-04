@@ -1,3 +1,4 @@
+chart: ingress-ingress-nginx , targetRevision: 4.14.2
 #------------------------ Controller ------------------------------#
 controller:
 
