@@ -1,0 +1,143 @@
+# chart: openfga , targetRevision: 0.2.52
+# ------------------------ Global --------------------------------
+global:
+  security:
+    allowInsecureImages: true
+
+# ------------------------ OpenFGA image --------------------------
+image:
+  repository: repo.mycompany.com:8xxx/openfga/openfga
+  pullPolicy: IfNotPresent
+  tag: ""
+
+# ------------------------ Replica count --------------------------
+replicaCount: 1
+
+# ------------------------ Datastore ------------------------------
+datastore:
+  engine: postgres
+  uri: "postgres://postgres:SOME-STRONG-PASSWORD@openfga-postgresql.openfga.svc.cluster.local:5432/postgres?sslmode=disable"
+
+  applyMigrations: true
+  waitForMigrations: true
+  migrationType: job
+
+  metrics:
+    enabled: true
+
+  maxOpenConns: 30
+  maxIdleConns: 15
+  connMaxIdleTime: 10m
+  connMaxLifetime: 1h
+
+  migrations:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# ------------------------ Wait-for migration image ---------------
+initContainer:
+  repository: repo.acctechco.com:8xxx/groundnuty/k8s-wait-for
+  tag: "v2.0"
+  pullPolicy: IfNotPresent
+
+# ------------------------ PostgreSQL subchart --------------------
+postgresql:
+  enabled: true
+
+  image:
+    registry: repo.mycompany.com:8xxx
+    repository: bitnamilegacy/postgresql
+    pullPolicy: IfNotPresent
+
+  volumePermissions:
+    enabled: true
+    image:
+      registry: repo.mycompany.com:8xxx
+      repository: bitnamilegacy/os-shell
+
+  auth:
+    enablePostgresUser: true
+    postgresPassword: "------"
+    database: postgres
+
+  architecture: standalone
+
+  primary:
+    persistence:
+      enabled: true
+      storageClass: k8s-test-nfs
+      size: 8Gi
+
+    resources:
+      requests:
+        cpu: 300m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+# ------------------------ Service --------------------------------
+service:
+  type: ClusterIP
+  port: 8080
+
+# ------------------------ gRPC / HTTP ----------------------------
+grpc:
+  addr: 0.0.0.0:8081
+  tls:
+    enabled: false
+
+http:
+  enabled: true
+  addr: 0.0.0.0:8080
+  tls:
+    enabled: false
+  corsAllowedOrigins:
+    - "*"
+  corsAllowedHeaders:
+    - "*"
+
+# ------------------------ Auth -----------------------------------
+authn:
+  method: preshared
+  preshared:
+    keys:
+      - "CHANGE-THIS-TO-A-LONG-RANDOM-SECRET"
+
+# ------------------------ Playground -----------------------------
+#disable this for production
+playground:
+  enabled: false
+  port: 3000
+
+# ------------------------ Logs -----------------------------------
+log:
+  level: info
+  format: json
+  timestampFormat: Unix
+
+# ------------------------ Metrics --------------------------------
+telemetry:
+  metrics:
+    enabled: true
+    addr: 0.0.0.0:2112
+    enableRPCHistograms: false
+    serviceMonitor:
+      enabled: true
+      namespace: prometheus
+      additionalLabels:
+        release: prometheus
+      scrapeInterval: 30s
+      scrapeTimeout: 10s
+
+  trace:
+    enabled: false
+
+# ------------------------ Cache ----------------------------------
+checkQueryCache:
+  enabled: false
