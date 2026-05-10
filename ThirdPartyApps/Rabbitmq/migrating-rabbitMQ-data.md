@@ -82,7 +82,7 @@ jq '{
 ```
 
 This reduced the file size and focused the bootstrap strictly on the required authorization and tenancy structure.
-
+📍 Rename rabbitmq-definitions-bootstrap.json to rabbitmq-definitions.json
 ---
 
 ### 📌 5) Creating a ConfigMap in Cluster B and loading definitions on startup
