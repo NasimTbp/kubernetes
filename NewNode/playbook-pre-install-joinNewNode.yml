@@ -1,38 +1,29 @@
-# Add offline APT repo + GPG key
-# Update /etc/hosts and set loadbalancer ip
-# Disable UFW
-# Stop/disable Splunk Forwarder safely if exists
-# Install dependencies (cri-tools, kubernetes-cni)
-# Install containerd 2.1.6 (binary) - optional/commented
-# Verify containerd version - optional/commented
-# Set Kubernetes sysctl configs including net.ipv4.ip_forward
-# Install NFS client
-
-- name: Bootstrap Kubernetes nodes (repo, hosts, ufw, containerd)
+---
+- name: Pre-install bootstrap for Kubernetes nodes
   hosts: all
   become: true
   gather_facts: false
 
   vars:
-    # ---------- APT repo ----------
+    # Offline APT repository address
     repo_line: "deb https://repo.acctechco.com/repository/offline-apt jammy main"
+
+    # Local GPG key path on the Ansible control machine
     gpg_key_local_path: "/etc/apt/trusted.gpg.d/nexus-apt-repo.public.gpg"
+
+    # Destination GPG key path on target VMs
     gpg_key_remote_path: "/etc/apt/trusted.gpg.d/nexus-apt-repo.public.gpg"
 
-    # ---------- /etc/hosts ----------
-    lb_ip: "172.x.x.x"
+    # Load balancer IP and DNS name for Kubernetes API server
+    lb_ip: "172.29.28.39"
     lb_host: "lb-apiserver.kubernetes.local"
-
-    # ---------- containerd ----------
-    containerd_version: "2.1.6"
-    containerd_tarball: "containerd-{{ containerd_version }}-linux-amd64.tar.gz"
-    containerd_url: "https://repo.acctechco.com/repository/raw-hosted/containerd-2.1.6/{{ containerd_tarball }}"
 
   tasks:
     ####################################################################
-    # APT REPOSITORY
+    # 1. Configure offline APT repository
     ####################################################################
 
+    # Copy the Nexus APT repository GPG key to each VM
     - name: Copy offline APT repo GPG key
       ansible.builtin.copy:
         src: "{{ gpg_key_local_path }}"
@@ -41,21 +32,25 @@
         group: root
         mode: "0644"
 
+    # Add the offline Nexus APT repository to /etc/apt/sources.list
     - name: Ensure offline APT repository exists
       ansible.builtin.lineinfile:
         path: /etc/apt/sources.list
         line: "{{ repo_line }}"
         state: present
         insertafter: EOF
+        backup: true
 
+    # Refresh APT package index from the offline repository
     - name: Update apt cache
       ansible.builtin.apt:
         update_cache: true
 
     ####################################################################
-    # DISABLE SPLUNK FORWARDER SAFELY
+    # 2. Disable Splunk Forwarder if it exists
     ####################################################################
 
+    # Check whether Splunk Forwarder service exists on the VM
     - name: Check if Splunk Forwarder service exists
       ansible.builtin.shell: |
         systemctl list-unit-files | awk '{print $1}' | grep -Fxq 'SplunkForwarder.service'
@@ -65,6 +60,7 @@
       changed_when: false
       failed_when: false
 
+    # Stop Splunk Forwarder to avoid interference
     - name: Stop Splunk Forwarder service if exists
       ansible.builtin.systemd:
         name: SplunkForwarder.service
@@ -72,6 +68,7 @@
       when: splunk_service_check.rc == 0
       failed_when: false
 
+    # Disable Splunk Forwarder so it does not start after reboot
     - name: Disable Splunk Forwarder service at boot if exists
       ansible.builtin.systemd:
         name: SplunkForwarder.service
@@ -80,9 +77,10 @@
       failed_when: false
 
     ####################################################################
-    # /etc/hosts
+    # 3. Configure /etc/hosts for Kubernetes API load balancer
     ####################################################################
 
+    # Add lb-apiserver.kubernetes.local entry to /etc/hosts
     - name: Ensure lb-apiserver entry exists in /etc/hosts
       ansible.builtin.lineinfile:
         path: /etc/hosts
@@ -93,111 +91,150 @@
         backup: true
 
     ####################################################################
-    # UFW
+    # 4. Disable UFW firewall
     ####################################################################
 
-    - name: Check if UFW command exists
-      ansible.builtin.command: command -v ufw
-      register: ufw_command_check
-      changed_when: false
-      failed_when: false
+    # Check whether UFW is installed
+    - name: Check if ufw binary exists
+      ansible.builtin.stat:
+        path: /usr/sbin/ufw
+      register: ufw_binary
 
+    # Disable UFW rules if UFW exists
     - name: Disable UFW if installed
-      ansible.builtin.command: ufw disable
-      when: ufw_command_check.rc == 0
+      ansible.builtin.command: /usr/sbin/ufw disable
+      when: ufw_binary.stat.exists
+      register: ufw_disable_result
+      changed_when: >
+        ufw_disable_result.stdout is search("Firewall stopped") or
+        ufw_disable_result.stdout is search("disabled on system startup")
       failed_when: false
 
-    - name: Stop and disable UFW service if installed
+    # Stop, disable, and mask UFW systemd service
+    - name: Stop, disable, and mask UFW service if installed
       ansible.builtin.systemd:
         name: ufw
         state: stopped
         enabled: false
-      when: ufw_command_check.rc == 0
+        masked: true
+      when: ufw_binary.stat.exists
       failed_when: false
 
     ####################################################################
-    # CONTAINERD DEPENDENCIES
+    # 5. Configure sysctl settings required by Kubernetes
     ####################################################################
 
-    - name: Install cri-tools and kubernetes-cni
-      ansible.builtin.apt:
-        name:
-          - cri-tools
-          - kubernetes-cni
-        state: present
-
-    ####################################################################
-    # CONTAINERD INSTALLATION
-    # This section is kept commented because it was commented in your file.
-    # Uncomment it only if you want this playbook to install containerd binary.
-    ####################################################################
-
-    # - name: Download containerd binary tarball
-    #   ansible.builtin.get_url:
-    #     url: "{{ containerd_url }}"
-    #     dest: "/tmp/{{ containerd_tarball }}"
-    #     mode: "0644"
-
-    # - name: Extract containerd binaries to /usr/local
-    #   ansible.builtin.unarchive:
-    #     src: "/tmp/{{ containerd_tarball }}"
-    #     dest: /usr/local
-    #     remote_src: true
-    #     creates: /usr/local/bin/containerd
-
-    # - name: Verify containerd version
-    #   ansible.builtin.command: /usr/local/bin/containerd --version
-    #   register: containerd_version_output
-    #   changed_when: false
-
-    # - name: Show containerd version
-    #   ansible.builtin.debug:
-    #     msg: "{{ containerd_version_output.stdout }}"
-
-    ####################################################################
-    # SYSCTL - KUBERNETES NETWORKING + INOTIFY
-    ####################################################################
-
-    - name: Create sysctl file for Kubernetes networking and inotify
+    # Create final sysctl override file.
+    # Important:
+    # net.ipv4.ip_forward alone was not enough in your environment,
+    # because net.ipv4.conf.all.forwarding was resetting forwarding to 0
+    # after systemd-sysctl restart.
+    - name: Create final sysctl override for Kubernetes
       ansible.builtin.copy:
-        dest: /etc/sysctl.d/99-kubernetes.conf
+        dest: /etc/sysctl.d/99-zz-kubernetes.conf
         content: |
           net.ipv4.ip_forward = 1
+          net.ipv4.conf.all.forwarding = 1
+          net.ipv4.conf.default.forwarding = 1
           fs.inotify.max_user_instances = 1024
         owner: root
         group: root
         mode: "0644"
 
-    - name: Apply Kubernetes sysctl file
-      ansible.builtin.command: sysctl -p /etc/sysctl.d/99-kubernetes.conf
-      changed_when: false
+    # Reload sysctl settings using systemd-sysctl.
+    # This confirms that the values remain correct even after sysctl reload.
+    - name: Apply sysctl settings through systemd-sysctl
+      ansible.builtin.systemd:
+        name: systemd-sysctl
+        state: restarted
 
-    - name: Force enable ipv4 forwarding at runtime
+    # Force runtime value for kubeadm preflight check
+    - name: Force enable IPv4 forwarding at runtime
       ansible.builtin.command: sysctl -w net.ipv4.ip_forward=1
       changed_when: false
 
-    - name: Verify ipv4 forwarding is enabled
+    # Force runtime forwarding for all IPv4 interfaces
+    - name: Force enable all IPv4 forwarding at runtime
+      ansible.builtin.command: sysctl -w net.ipv4.conf.all.forwarding=1
+      changed_when: false
+
+    # Force runtime forwarding default for future IPv4 interfaces
+    - name: Force enable default IPv4 forwarding at runtime
+      ansible.builtin.command: sysctl -w net.ipv4.conf.default.forwarding=1
+      changed_when: false
+
+    # Verify kubeadm-required IPv4 forwarding value
+    - name: Verify net.ipv4.ip_forward is enabled
       ansible.builtin.command: cat /proc/sys/net/ipv4/ip_forward
       register: ip_forward_status
       changed_when: false
       failed_when: ip_forward_status.stdout.strip() != "1"
 
-    - name: Show ipv4 forwarding status
-      ansible.builtin.debug:
-        msg: "net.ipv4.ip_forward is {{ ip_forward_status.stdout }}"
+    # Verify forwarding for all current IPv4 interfaces
+    - name: Verify net.ipv4.conf.all.forwarding is enabled
+      ansible.builtin.command: cat /proc/sys/net/ipv4/conf/all/forwarding
+      register: ip_forward_all_status
+      changed_when: false
+      failed_when: ip_forward_all_status.stdout.strip() != "1"
+
+    # Verify default forwarding for future IPv4 interfaces
+    - name: Verify net.ipv4.conf.default.forwarding is enabled
+      ansible.builtin.command: cat /proc/sys/net/ipv4/conf/default/forwarding
+      register: ip_forward_default_status
+      changed_when: false
+      failed_when: ip_forward_default_status.stdout.strip() != "1"
 
     ####################################################################
-    # NFS CLIENT
+    # 6. Install required packages
     ####################################################################
 
-    - name: Install nfs-common package
+    # Install packages needed by Kubernetes / Kubespray / NFS storage
+    - name: Install Kubernetes dependencies
       ansible.builtin.apt:
-        name: nfs-common
+        name:
+          - cri-tools
+          - kubernetes-cni
+          - nfs-common
         state: present
 
+    ####################################################################
+    # 7. Enable rpcbind for NFS
+    ####################################################################
+
+    # Start and enable rpcbind; useful when NFS-based storage is used
     - name: Ensure rpcbind service is running
       ansible.builtin.service:
         name: rpcbind
         state: started
         enabled: true
       failed_when: false
+
+    ####################################################################
+    # 8. Final compact report
+    ####################################################################
+
+    # Get final UFW status for reporting
+    - name: Get UFW status
+      ansible.builtin.command: /usr/sbin/ufw status
+      when: ufw_binary.stat.exists
+      register: ufw_status
+      changed_when: false
+      failed_when: false
+
+    # Print final status per VM
+    - name: Print final compact status
+      ansible.builtin.debug:
+        msg: >-
+          VM={{ inventory_hostname }}
+          | UFW={{
+              'NOT-INSTALLED'
+              if not ufw_binary.stat.exists
+              else (
+                'INACTIVE'
+                if 'Status: inactive' in (ufw_status.stdout | default(''))
+                else 'ACTIVE'
+              )
+            }}
+          | ip_forward={{ ip_forward_status.stdout }}
+          | all.forwarding={{ ip_forward_all_status.stdout }}
+          | default.forwarding={{ ip_forward_default_status.stdout }}
