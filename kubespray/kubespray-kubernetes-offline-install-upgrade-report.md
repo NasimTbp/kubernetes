@@ -168,14 +168,14 @@ In this structure, all images required by the Kubernetes cluster must eventually
 An example image pull command for the downstream repository can be as follows:
 
 ```bash
-docker pull repo.acctechco.com:8444/kube-controller-manager:v1.35.4
+docker pull repo.mycpmpany.com:8XXX/kube-controller-manager:v1.35.4
 ```
 
 For the upstream repository, depending on the Nexus and registry addressing structure, the commands may look like the following:
 
 ```bash
-docker pull localhost:8083/kube-controller-manager:v1.35.4
-docker pull upstream-repo.acctechco.com:8444/kube-controller-manager:v1.35.4
+docker pull localhost:80YZ/kube-controller-manager:v1.35.4
+docker pull upstream-repo.mycpmpany.com:8XXX/kube-controller-manager:v1.35.4
 ```
 
 ⚠️ At this stage, it is important to ensure that the exact image names and repository paths match the offline settings used by Kubespray. If Kubespray uses a specific prefix or repository path for images, the same structure must exist inside Nexus.It is also recommended to test the cluster nodes’ access to the internal repository after pulling the images. This can be done by trying to pull a required image from one of the cluster nodes. If the node cannot pull the image manually, the Kubespray playbook will likely fail at the image pull stage.
