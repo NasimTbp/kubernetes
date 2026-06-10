@@ -13,9 +13,8 @@
 09. [Reviewing and Using the Cluster Inventory File](#reviewing-and-using-the-cluster-inventory-file)
 10. [Installing the Kubernetes Cluster](#installing-the-kubernetes-cluster)
 11. [Upgrading the Kubernetes Cluster](#upgrading-the-kubernetes-cluster)
-12. [Important Checks Before Production Upgrade](#important-checks-before-production-upgrade)
-13. [Internal Workaround Related to `kube.py`](#internal-workaround-related-to-kubepy)
-14. [Summary](#summary)
+12. [Internal Workaround Related to `kube.py`](#internal-workaround-related-to-kubepy)
+13. [Summary](#summary)
 
 ---
 
