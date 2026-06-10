@@ -55,6 +55,7 @@ After selecting the proper Kubespray version, the `internal company versio`n of 
 For this purpose, the previously used Kubespray version in the company, for example version `2.30`, should be downloaded from GitHub and compared with the corresponding version available in the company’s internal GitLab repository. The objective of this comparison is to identify all internal changes made by the company on top of the official Kubespray release.
 
 🔍 These changes may include:
+- [kube.py](#internal-workaround-related-to-kubepy)
 - inventory settings, 
 - repository addresses, 
 - container runtime configuration, 
