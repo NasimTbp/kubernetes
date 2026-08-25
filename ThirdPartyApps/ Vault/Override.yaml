@@ -1,0 +1,232 @@
+# =====================================================================
+# Vault Helm chart override — hashicorp/vault v0.34.0
+# Deployed via Argo CD, running on an Istio mesh (mTLS handled by Istio)
+#
+# TLS strategy: Vault's own listener TLS is disabled (tlsDisable: true).
+# Pod-to-pod traffic — client -> Vault, and Vault raft peer traffic on
+# cluster_address — is encrypted by the Istio sidecar (mTLS). Note that
+# Vault's raft storage backend also always encrypts its own inter-node
+# RPC independently of the API listener setting, so this is not a
+# reduction in raft-layer security.
+#
+# Seal strategy: Transit auto-unseal, using a small dedicated Vault
+# (release "vault-unseal", namespace "vault-unseal") as the KMS. The
+# token used to talk to that KMS is injected via the Kubernetes Secret
+# "vault-unseal-token" (created manually, see extraSecretEnvironmentVars
+# below) rather than stored in this file.
+#
+# Namespace prerequisite: enable Istio sidecar injection on the
+# target namespace, e.g.
+#   kubectl label namespace vault istio-injection=enabled
+# =====================================================================
+
+global:
+  enabled: true
+  imagePullSecrets: []
+  tlsDisable: true
+
+# ---------------------------------------------------------------------
+# Injector (Vault Agent Sidecar Injector)
+# ---------------------------------------------------------------------
+injector:
+  enabled: true
+  replicas: 2          # for injector HA; set to 1 for single-node
+
+  image:
+    repository: "repo.mycpmpany.com:8xxx/hashicorp/vault-k8s"
+    tag: "1.7.5"
+    pullPolicy: IfNotPresent
+
+  agentImage:
+    repository: "repo.mycpmpany.com:8xxx/hashicorp/vault"
+    tag: "1.18.3"       # stable, widely-used enterprise version; remove to fall back to chart default (2.0.3)
+
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 250m
+
+  # Ensures the Istio sidecar is ready before the injector container
+  # starts, avoiding startup race conditions on a mesh namespace.
+  annotations:
+    proxy.istio.io/config: |
+      holdApplicationUntilProxyStarts: true
+
+  # To restrict injection to specific namespaces only:
+  # webhook:
+  #   namespaceSelector:
+  #     matchLabels:
+  #       vault-injection: enabled
+
+# ---------------------------------------------------------------------
+# Server
+# ---------------------------------------------------------------------
+server:
+  image:
+    repository: "repo.mycpmpany.com:8xxx/hashicorp/vault"
+    tag: "1.18.3"
+    pullPolicy: IfNotPresent
+
+  updateStrategyType: "OnDelete"
+  logLevel: "info"
+
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+
+  # No Kubernetes Ingress resource — external access is via an Istio
+  # Gateway + VirtualService instead (separate manifest, see
+  # vault-istio-gateway.yaml).
+  ingress:
+    enabled: false
+
+  authDelegator:
+    enabled: true
+
+  extraContainers: null
+  shareProcessNamespace: false
+  extraArgs: ""
+
+  # Same reasoning as the injector: wait for the Istio sidecar to be
+  # ready before Vault's own container starts, so readiness/liveness
+  # probes and raft peer communication don't fail during pod startup.
+  annotations:
+    proxy.istio.io/config: |
+      holdApplicationUntilProxyStarts: true
+    # Optional: exclude the raft cluster port from sidecar interception.
+    # Uncomment if you see raft heartbeat/leader-election instability
+    # caused by sidecar restarts.
+    # traffic.sidecar.istio.io/excludeInboundPorts: "8201"
+    # traffic.sidecar.istio.io/excludeOutboundPorts: "8201"
+
+  readinessProbe:
+    enabled: true
+  livenessProbe:
+    enabled: true
+    path: "/v1/sys/health?standbyok=true&sealedcode=200&uninitcode=200"
+
+  terminationGracePeriodSeconds: 10
+  preStopSleepSeconds: 5
+
+  extraEnvironmentVars: {}
+
+  # The Transit auto-unseal token, pulled from a pre-created Kubernetes
+  # Secret. Create it once with:
+  #   kubectl create secret generic vault-unseal-token -n vault \
+  #     --from-literal=VAULT_TOKEN=<token from vault-unseal Vault>
+  extraSecretEnvironmentVars:
+    - envName: VAULT_TOKEN
+      secretName: vault-unseal-token
+      secretKey: VAULT_TOKEN
+
+  affinity: |
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ template "vault.name" . }}
+              app.kubernetes.io/instance: "{{ .Release.Name }}"
+              component: server
+          topologyKey: kubernetes.io/hostname
+
+  tolerations: []
+  nodeSelector: {}
+  extraLabels: {}
+
+  service:
+    enabled: true
+    active:
+      enabled: true
+    standby:
+      enabled: true
+    port: 8200
+    targetPort: 8200
+    annotations: {}
+
+  # ---- Data storage (used for both file and raft backends) ----
+  dataStorage:
+    enabled: true
+    size: 10Gi
+    storageClass: k8s-test-nfs
+    accessMode: ReadWriteOnce
+
+  # ---- Audit log storage ----
+  auditStorage:
+    enabled: true
+    size: 10Gi
+    storageClass: test-nfs
+    accessMode: ReadWriteOnce
+
+  dev:
+    enabled: false
+
+  # ---- Standalone mode (test/small environments only; use ha for production) ----
+  standalone:
+    enabled: false
+
+  # ---- HA mode with Integrated Storage (Raft) — no external Consul
+  # cluster required ----
+  ha:
+    enabled: true
+    replicas: 3
+
+    raft:
+      enabled: true
+      setNodeId: true
+      config: |
+        ui = true
+
+        # Transit auto-unseal: on every restart, Vault asks the small
+        # "vault-unseal" Vault to unwrap its encryption key instead of
+        # waiting for 3 humans to type Shamir unseal keys.
+        seal "transit" {
+          address         = "http://vault-unseal.vault-unseal.svc:8200"
+          disable_renewal = "false"
+          key_name        = "autounseal"
+          mount_path      = "transit/"
+        }
+
+        listener "tcp" {
+          tls_disable     = 1
+          address         = "[::]:8200"
+          cluster_address = "[::]:8201"
+        }
+
+        storage "raft" {
+          path = "/vault/data"
+        }
+
+        service_registration "kubernetes" {}
+
+    disruptionBudget:
+      enabled: true
+      maxUnavailable: null
+
+  serviceAccount:
+    create: true
+    serviceDiscovery:
+      enabled: true
+
+# ---------------------------------------------------------------------
+# Vault UI
+# ---------------------------------------------------------------------
+ui:
+  enabled: true
+  # Internal ClusterIP service; external access is provided by the
+  # Istio Gateway + VirtualService (separate manifest), not by this
+  # service's type.
+  serviceType: "ClusterIP"
+  externalPort: 8200
+
+# ---------------------------------------------------------------------
+# CSI Provider (optional — mounts secrets into pods as volumes)
+# ---------------------------------------------------------------------
+csi:
+  enabled: false
