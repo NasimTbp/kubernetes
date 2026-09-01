@@ -1,0 +1,190 @@
+# override.yaml
+# OpenSearch 3.x - small/medium internal logging cluster on Kubernetes
+
+clusterName: "opensearch-logs"
+nodeGroup: "master"
+singleNode: false
+masterService: "opensearch-logs-master"
+
+majorVersion: "3"
+
+# For OpenSearch 3, cluster_manager is the modern name.
+# If your Helm chart complains, replace "cluster_manager" with "master".
+roles:
+  - master
+  - ingest
+  - data
+  - remote_cluster_client
+
+replicas: 3
+
+image:
+  repository: "repo.mycompany.com:8xxx/opensearchproject/opensearch"
+  tag: "3.7.0"
+  pullPolicy: "IfNotPresent"
+
+# TLS on port 9200 conflicts with Istio's HTTP protocol detection
+# (the Service port is named "http" but actually carries TLS traffic).
+# Keep the sidecar, but exclude these ports from Envoy interception
+# so traffic passes through as raw TCP instead of being parsed as HTTP.
+podAnnotations:
+  traffic.sidecar.istio.io/excludeOutboundPorts: "9200,9300"
+  traffic.sidecar.istio.io/excludeInboundPorts: "9200,9300"
+
+extraEnvs:
+  - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: opensearch-admin-secret
+        key: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+
+extraVolumes:
+  - name: custom-certs
+    secret:
+      secretName: opensearch-certs
+
+extraVolumeMounts:
+  - name: custom-certs
+    mountPath: /usr/share/opensearch/config/custom-certs
+    readOnly: true
+
+config:
+  opensearch.yml: |-
+    cluster.name: opensearch-logs
+    network.host: 0.0.0.0
+
+    # Prevent dangerous wildcard deletes such as DELETE /*
+    action.destructive_requires_name: true
+
+    # Disk protection. OpenSearch will slow/stop allocation before the disk is full.
+    cluster.routing.allocation.disk.threshold_enabled: true
+    cluster.routing.allocation.disk.watermark.low: 75%
+    cluster.routing.allocation.disk.watermark.high: 85%
+    cluster.routing.allocation.disk.watermark.flood_stage: 95%
+
+    # This is useful for log clusters where many small shards can kill performance.
+    cluster.max_shards_per_node: 1000
+
+    # TLS transport (between nodes, port 9300)
+    plugins.security.ssl.transport.pemcert_filepath: custom-certs/node.pem
+    plugins.security.ssl.transport.pemkey_filepath: custom-certs/node-key.pem
+    plugins.security.ssl.transport.pemtrustedcas_filepath: custom-certs/root-ca.pem
+    plugins.security.ssl.transport.enforce_hostname_verification: false
+
+    # TLS for REST API (port 9200)
+    plugins.security.ssl.http.enabled: true
+    plugins.security.ssl.http.pemcert_filepath: custom-certs/node.pem
+    plugins.security.ssl.http.pemkey_filepath: custom-certs/node-key.pem
+    plugins.security.ssl.http.pemtrustedcas_filepath: custom-certs/root-ca.pem
+
+    # Identify admin and node identities from certificate DN
+    plugins.security.authcz.admin_dn:
+      - "CN=admin,O=AccTechCo,C=IR"
+
+    plugins.security.nodes_dn:
+      - "CN=opensearch-logs-master,O=AccTechCo,C=IR"
+
+    plugins.security.allow_unsafe_democertificates: false
+    plugins.security.allow_default_init_securityindex: true
+
+opensearchJavaOpts: "-Xms4g -Xmx4g"
+
+resources:
+  requests:
+    cpu: "2"
+    memory: "8Gi"
+  limits:
+    cpu: "4"
+    memory: "8Gi"
+
+persistence:
+  enabled: true
+  enableInitChown: true
+  image: repo.acctechco.com:8444/busybox
+
+  storageClass: "k8s-xxx-nfs3"
+
+  accessModes:
+    - ReadWriteOnce
+
+  # For logs, 10Gi is usually too small.
+  # Start with 100Gi if you can.
+  size: 10Gi
+
+# For production, prefer hard anti-affinity if you have at least 3 worker nodes.
+# If you have fewer than 3 suitable workers, pods may stay Pending.
+antiAffinity: "soft"
+antiAffinityTopologyKey: "kubernetes.io/hostname"
+
+podManagementPolicy: "Parallel"
+
+protocol: https
+httpPort: 9200
+transportPort: 9300
+
+service:
+  type: ClusterIP
+
+ingress:
+  enabled: false
+#  ingressClassName: nginx
+#  hosts:
+#    - opensearch-test.acctechco.com
+#  tls:
+#    - secretName: opensearch-tls
+#     hosts:
+#       - opensearch-test.acctechco.com
+
+sysctlVmMaxMapCount: 262144
+
+sysctlInit:
+  enabled: true
+  image: repo.acctechco.com:8444/busybox
+
+podSecurityContext:
+  fsGroup: 1000
+  runAsUser: 1000
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  runAsNonRoot: true
+  runAsUser: 1000
+
+startupProbe:
+  tcpSocket:
+    port: 9200
+  initialDelaySeconds: 45
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 40
+
+readinessProbe:
+  tcpSocket:
+    port: 9200
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 6
+
+livenessProbe:
+  tcpSocket:
+    port: 9200
+  initialDelaySeconds: 180
+  periodSeconds: 20
+  timeoutSeconds: 5
+  failureThreshold: 6
+
+terminationGracePeriod: 180
+
+updateStrategy: RollingUpdate
+maxUnavailable: 1
+
+enableServiceLinks: false
+
+rbac:
+  create: false
+  automountServiceAccountToken: false
+
+networkPolicy:
+  create: false
