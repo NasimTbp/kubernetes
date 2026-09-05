@@ -43,7 +43,9 @@ jaeger-energy-group (main Jaeger service, port 16686)
     * Client ID: `jaeger-energy-oauth2-proxy`
     * Client authentication: On (Confidential client)
     * Standard flow: Enabled
-    * Valid redirect URIs: `https://jaeger-energy-test.mycompany.com/oauth2/callback`
+    * Valid redirect URIs: https://jaeger-energy-test.mycompany.com/oauth2/callback
+    * Valid post logout redirect URIs: https://jaeger-energy-test.mycompany.com/*
+    * Web origins: https://jaeger-energy-test.mycompany.com
     * The Client Secret was obtained from the Credentials tab.
 
 3. **Created a test user:** `jaeger-test`
