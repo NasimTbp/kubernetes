@@ -58,8 +58,11 @@ jaeger-energy-group (main Jaeger service, port 16686)
 A Secret was created to securely store the connection information:
 
 ```bash
-COOKIE_SECRET=$(python3 -c 'import secrets,base64; print(base64.b64encode(secrets.token_bytes(16)).decode())') echo "Cookie secret: $COOKIE_SECRET"
+COOKIE_SECRET=$(python3 -c 'import secrets,base64; print(base64.b64encode(secrets.token_bytes(16)).decode())')
+echo "Cookie secret: $COOKIE_SECRET"
+```
 
+```bash
 kubectl create secret generic oauth2-proxy-jaeger-energy \
   --namespace=observability-energy-group \
   --from-literal=client-id=jaeger-energy-oauth2-proxy \
